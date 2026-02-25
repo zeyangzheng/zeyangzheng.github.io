@@ -1,0 +1,69 @@
+name: Topps UK New Product Alert
+
+on:
+  schedule:
+    # Runs every hour (minute 0) — adjust as needed
+    - cron: "0 * * * *"
+  workflow_dispatch:   # allows manual trigger from the Actions tab
+
+jobs:
+  check-new-products:
+    name: Check for new Topps UK products
+    runs-on: ubuntu-latest
+
+    steps:
+      # -----------------------------------------------------------------------
+      # 1. Check out the repository so we can read/write the state file
+      # -----------------------------------------------------------------------
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: master        # always run against the main branch state file
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # -----------------------------------------------------------------------
+      # 2. Restore the cached state file between runs
+      #    (falls back gracefully if the cache doesn't exist yet)
+      # -----------------------------------------------------------------------
+      - name: Restore product state cache
+        uses: actions/cache@v4
+        with:
+          path: bot/known_products.json
+          key: topps-known-products-${{ github.run_id }}
+          restore-keys: |
+            topps-known-products-
+
+      # -----------------------------------------------------------------------
+      # 3. Set up Python
+      # -----------------------------------------------------------------------
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r bot/requirements.txt
+
+      # -----------------------------------------------------------------------
+      # 4. Run the alert bot
+      # -----------------------------------------------------------------------
+      - name: Run Topps alert bot
+        env:
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+          RECIPIENT_EMAIL: zeyangzhengzeus@gmail.com
+          STATE_FILE: bot/known_products.json
+        run: python bot/topps_alert.py
+
+      # -----------------------------------------------------------------------
+      # 5. Commit updated state back to the repo
+      #    (Only commits when known_products.json actually changed)
+      # -----------------------------------------------------------------------
+      - name: Commit updated product state
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add bot/known_products.json
+          # Only commit if there is something staged
+          git diff --cached --quiet || git commit -m "chore: update known Topps UK products [skip ci]"
+          git push origin master
