@@ -65,7 +65,7 @@ jobs:
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add bot/known_products.json
-          # Only commit if there is something staged
-          git diff --cached --quiet || git commit -m "chore: update known Topps UK products [skip ci]"
-          git push origin master
+          # Only add if the file exists — Python exits early when the Topps API is unreachable
+          [ -f bot/known_products.json ] && git add bot/known_products.json || true
+          # Only commit + push if something was staged
+          git diff --cached --quiet || (git commit -m "chore: update known Topps UK products [skip ci]" && git push origin HEAD:master)
