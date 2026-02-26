@@ -10,6 +10,8 @@ jobs:
   check-new-products:
     name: Check for new Topps UK products
     runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed to push the updated known_products.json back to master
 
     steps:
       # -----------------------------------------------------------------------
